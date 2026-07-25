@@ -628,11 +628,9 @@ LullTheTabs.prototype = {
 			this.clearTimer(aTab);
 		const defaultTimeout = Services.prefs.getIntPref(branch + "unloadTimeout") * 60 * 1000;
 		const timeout = aTimeout ? Math.min(defaultTimeout, aTimeout * 60 * 1000) : defaultTimeout;
-		aTab._lullTheTabsTimer = window.setTimeout(() => {
-			// The timer will be removed automatically since
-			// unloadTab() will close and replace the original tab.
-			this.unloadTab(aTab, { timer: true });
-		}, timeout);
+		// The timer will be removed automatically since
+		// unloadTab() will close and replace the original tab.
+		aTab._lullTheTabsTimer = window.setTimeout(() => this.unloadTab(aTab, { timer: true }), timeout);
 	},
 
 	clearTimer(aTab) {
@@ -780,7 +778,7 @@ LullTheTabs.prototype = {
 		}
 		const asyncFavicons = gFaviconService.QueryInterface(Ci.mozIAsyncFavicons);
 		const sHref = aHref.split(/\/+/g);
-		asyncFavicons.getFaviconURLForPage(Services.io.newURI(sHref[0] + "//" + sHref[1], null, null), function(aURI) {
+		asyncFavicons.getFaviconURLForPage(Services.io.newURI(sHref[0] + "//" + sHref[1], null, null), aURI => {
 			if(aURI && aURI.spec) {
 				session.image = aURI.spec;
 			} else if(typeof sHref[1] == "string") {
