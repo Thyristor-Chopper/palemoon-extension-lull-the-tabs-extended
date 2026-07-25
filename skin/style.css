@@ -1,28 +1,29 @@
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
 @-moz-document url("chrome://browser/content/browser.xul") {
-  .tabbrowser-tab[pending=true],
-  menuitem.alltabs-item[pending=true] {
-    opacity: .5;
-  }
+	.tabbrowser-tab[pending=true],
+	menuitem.alltabs-item[pending=true] {
+		opacity: .5;
+	}
 
-  #lull-the-tabs-button {
-    list-style-image: url("chrome://lull-the-tabs/skin/urlbar-icon.png");
-    -moz-image-region: rect(0px 16px 16px 0px);
-  }
+	#lull-the-tabs-button {
+		list-style-image: url("chrome://lull-the-tabs/skin/urlbar-icon.png");
+		-moz-image-region: rect(0px 16px 16px 0px);
+	}
 
-  #lull-the-tabs-button:not([protected]):hover {
-    -moz-image-region: rect(0px 32px 16px 16px);
-  }
+	#lull-the-tabs-button:not([protected]):hover {
+		-moz-image-region: rect(0px 32px 16px 16px);
+	}
 
-  #lull-the-tabs-button[protected] {
-    -moz-image-region: rect(0px 48px 16px 32px);
-  }
+	#lull-the-tabs-button[protected] {
+		-moz-image-region: rect(0px 48px 16px 32px);
+	}
 
-  #lull-the-tabs-button[protected]:hover {
-    -moz-image-region: rect(0px 64px 16px 48px);
-  }
+	#lull-the-tabs-button[protected]:hover {
+		-moz-image-region: rect(0px 64px 16px 48px);
+	}
 
-  .tabbrowser-tab[bgpending] .tab-label {
-    text-decoration: underline wavy;
-  }
+	.tabbrowser-tab[bgpending] .tab-label {
+		text-decoration: underline wavy;
+	}
 }
