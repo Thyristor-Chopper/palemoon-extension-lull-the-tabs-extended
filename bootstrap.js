@@ -19,7 +19,6 @@ const DEFAULT_PREFS = {
 	exceptionList: "",
 	selectOnClose: 1,
 	leftIsNearest: false,
-	ghostTabMitigation: false,
 	preventAutoUnloadAudioTab: false,
 	unloadAudioTabRetryDelay: 30,
 };
@@ -584,24 +583,22 @@ LullTheTabs.prototype = {
 		// Close the original tab.	We're taking the long way round to
 		// ensure the nsISessionStore service won't save this in the
 		// recently closed tabs.
+		let browser = tabbrowser.getBrowserForTab(aTab);
 		if(tabbrowser._beginRemoveTab(aTab, true, null, false)) {
-			let browser = tabbrowser.getBrowserForTab(aTab);
+			tabbrowser._endRemoveTab(aTab);
 			if(browser.registeredOpenURI) {
-				if(!Services.prefs.getBoolPref(branch + 'ghostTabMitigation')) {
-					if(tabbrowser._placesAutocomplete) {
-						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
-					} else if(tabbrowser._unifiedComplete) {
-						try {
-							tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI);
-						} catch(e) {
-							let userContextId = tabbrowser.getAttribute("usercontextid") || 0;
-							tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
-						}
+				if(tabbrowser._placesAutocomplete) {
+					tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
+				} else if(tabbrowser._unifiedComplete) {
+					try {
+						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI);
+					} catch(e) {
+						let userContextId = tabbrowser.getAttribute("usercontextid") || 0;
+						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
 					}
 				}
 				delete browser.registeredOpenURI;
 			}
-			tabbrowser._endRemoveTab(aTab);
 		}
 	},
 
