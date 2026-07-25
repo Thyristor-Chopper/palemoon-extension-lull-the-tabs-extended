@@ -19,6 +19,9 @@ const DEFAULT_PREFS = {
 	exceptionList: "",
 	selectOnClose: 1,
 	leftIsNearest: false,
+	ghostTabMitigation: false,
+	preventAutoUnloadAudioTab: false,
+	unloadAudioTabRetryDelay: 30,
 };
 
 XPCOMUtils.defineLazyServiceGetter(this, "gSessionStore", "@mozilla.org/browser/sessionstore;1", "nsISessionStore");
@@ -33,6 +36,23 @@ let styleSheetService = Cc["@mozilla.org/content/style-sheet-service;1"].getServ
 let styleSheetURI = Services.io.newURI("chrome://lull-the-tabs/skin/style.css", null, null);
 
 let domRegex = null, gWindowListener;
+
+const languages = {
+	'en-US': {
+		unloadTab: 'Unload Tab',
+		unloadOtherTabs: 'Unload Other Tabs',
+		neverUnload: 'Never Unload Tab',
+		neverUnload1: 'Never Unload "',
+		neverUnload2: '"',
+	},
+	ko: {
+		unloadTab: '\uD0ED\u0020\uBE44\uD65C\uC131\uD654',  // 탭 비활성화
+		unloadOtherTabs: '\uB2E4\uB978\u0020\uD0ED\u0020\uBE44\uD65C\uC131\uD654',  // 다른 탭 비활성화
+		neverUnload: '\uC774\u0020\uD0ED\u0020\uD56D\uC0C1\u0020\uD65C\uC131\uD654',  // 이 탭 항상 활성화
+		neverUnload1: '\'',
+		neverUnload2: '\' \uD56D\uC0C1\u0020\uD65C\uC131\uD654',  // '(도메인)' 항상 활성화
+	},
+};
 
 function initPreferences() {
 	let defaultBranch = Services.prefs.getDefaultBranch(branch);
@@ -391,8 +411,9 @@ LullTheTabs.prototype = {
 				menuitem_unloadTab.removeAttribute("disabled");
 			}
 		}
-
-		menuitem_neverUnload.setAttribute("label", 'Never Unload "' + host + '"');
+		
+		const language = languages[Services.prefs.getCharPref('general.useragent.locale')] || languages['en-US'];
+		menuitem_neverUnload.setAttribute("label", language.neverUnload1 + host + language.neverUnload2);
 		menuitem_neverUnload.removeAttribute("hidden");
 	},
 
@@ -454,6 +475,22 @@ LullTheTabs.prototype = {
 	 * Unload a tab.
 	 */
 	unloadTab(aTab, aOptions) {
+		const window = aTab.ownerDocument.defaultView;
+		if(aTab._audioStopPollTimer) {
+			window.clearTimeout(aTab._audioStopPollTimer);
+			aTab._audioStopPollTimer = null;
+		}
+		// 오디오 재생 중이면 취소 (자동 비활성화 시에만!)
+		if(aOptions && aOptions.timer && Services.prefs.getBoolPref(branch + 'preventAutoUnloadAudioTab') && aTab.getAttribute('soundplaying') === 'true') {
+			/* Services.prompt.alert(window, null, '\u005B\uB514\uBC84\uADF8\u005D\u0020\uC624\uB514\uC624\u0020\uC7AC\uC0DD\u0020\uC911\uC774\uC5B4\uC11C\u0020\uBE44\uD65C\uC131\uD654\u0020\uCDE8\uC18C');  // [디버그] 오디오 재생 중이어서 비활성화 취소 */
+			// 30초 후 오디오 재생 여부 재확인 후 다시 비활성화 시도
+			aTab._audioStopPollTimer = window.setTimeout(() => {
+				aTab._audioStopPollTimer = null;
+				this.unloadTab(aTab, aOptions);
+			}, Services.prefs.getIntPref(branch + 'unloadAudioTabRetryDelay') * 1000);
+			return;
+		}
+
 		// Ignore tabs that are pinned, already unloaded or whitelisted, unless the unload is forced.
 		if(isWhiteListed(aTab.linkedBrowser.currentURI) && (!aOptions || aOptions && !aOptions.force) || aTab.hasAttribute("pending") || !Services.prefs.getBoolPref(ON_DEMAND_PREF) || aTab.hasAttribute("pinned") && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF)) {
 			return;
@@ -550,14 +587,16 @@ LullTheTabs.prototype = {
 		if(tabbrowser._beginRemoveTab(aTab, true, null, false)) {
 			let browser = tabbrowser.getBrowserForTab(aTab);
 			if(browser.registeredOpenURI) {
-				if(tabbrowser._placesAutocomplete) {
-					tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
-				} else if(tabbrowser._unifiedComplete) {
-					try {
-						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI);
-					} catch(e) {
-						let userContextId = tabbrowser.getAttribute("usercontextid") || 0;
-						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
+				if(!Services.prefs.getBoolPref(branch + 'ghostTabMitigation')) {
+					if(tabbrowser._placesAutocomplete) {
+						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
+					} else if(tabbrowser._unifiedComplete) {
+						try {
+							tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI);
+						} catch(e) {
+							let userContextId = tabbrowser.getAttribute("usercontextid") || 0;
+							tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
+						}
 					}
 				}
 				delete browser.registeredOpenURI;
@@ -634,6 +673,21 @@ LullTheTabs.prototype = {
 	},
 
 	startTimer(aTab, aTimeout) {
+		let window = aTab.ownerDocument.defaultView;
+		if(aTab._audioStopPollTimer) {
+			window.clearTimeout(aTab._audioStopPollTimer);
+			aTab._audioStopPollTimer = null;
+		}
+		// 오디오 재생 중이면 건너뛰기
+		if(Services.prefs.getBoolPref(branch + 'preventAutoUnloadAudioTab') && aTab.getAttribute('soundplaying') === 'true') {
+			/* Services.prompt.alert(window, null, '\u005B\uB514\uBC84\uADF8\u005D\u0020\uC624\uB514\uC624\u0020\uC7AC\uC0DD\u0020\uC911\uC774\uC5B4\uC11C\u0020\uD0C0\uC774\uBA38\u0020\uAC1C\uC2DC\u0020\uCDE8\uC18C');  // [디버그] 오디오 재생 중이어서 타이머 등록 취소 */
+			// 30초 후 오디오 재생 여부 재확인 후 다시 타이머 시작 시도
+			aTab._audioStopPollTimer = window.setTimeout(() => {
+				aTab._audioStopPollTimer = null;
+				this.startTimer(aTab, aTimeout);
+			}, Services.prefs.getIntPref(branch + 'unloadAudioTabRetryDelay') * 1000);
+			return;
+		}
 		if(aTab.hasAttribute("pending")) {
 			return;
 		}
@@ -644,7 +698,6 @@ LullTheTabs.prototype = {
 		if(aTimeout) {
 			timeout = Math.min(timeout, aTimeout * 60 * 1000);
 		}
-		let window = aTab.ownerDocument.defaultView;
 		// Allow 'this' to leak into the inline function
 		let self = this;
 		aTab._lullTheTabsTimer = window.setTimeout(function() {
@@ -657,7 +710,9 @@ LullTheTabs.prototype = {
 	clearTimer(aTab) {
 		let window = aTab.ownerDocument.defaultView;
 		window.clearTimeout(aTab._lullTheTabsTimer);
+		window.clearTimeout(aTab._audioStopPollTimer);
 		aTab._lullTheTabsTimer = null;
+		aTab._audioStopPollTimer = null;
 	},
 
 	startAllTimers() {
@@ -681,28 +736,31 @@ LullTheTabs.prototype = {
 		let tabContextMenu = document.getElementById("tabContextMenu");
 		let openTabInWindow = document.getElementById("context_openTabInWindow");
 
+		const language = languages[Services.prefs.getCharPref('general.useragent.locale')] || languages['en-US'];
+
 		// add "Unload Tab" menuitem to tab context menu
 		let menuitem_unloadTab = document.createElement("menuitem");
 		menuitem_unloadTab.setAttribute("id", "lull-the-tabs-unload");
-		menuitem_unloadTab.setAttribute("label", "Unload Tab"); // TODO l10n
+		menuitem_unloadTab.setAttribute("label", language.unloadTab);
+		menuitem_unloadTab.setAttribute("accesskey", "n");
 		menuitem_unloadTab.setAttribute("tbattr", "tabbrowser-multiple");
-		menuitem_unloadTab.setAttribute(
-			"oncommand", "gBrowser.LullTheTabs.unloadTab(gBrowser.mContextTab);");
+		menuitem_unloadTab.setAttribute("oncommand", "gBrowser.LullTheTabs.unloadTab(gBrowser.mContextTab);");
 		tabContextMenu.insertBefore(menuitem_unloadTab, openTabInWindow);
 
 		// add "Unload Other Tabs" menuitem to tab context menu
 		let menuitem_unloadOtherTabs = document.createElement("menuitem");
 		menuitem_unloadOtherTabs.setAttribute("id", "lull-the-tabs-unload-others");
-		menuitem_unloadOtherTabs.setAttribute("label", "Unload Other Tabs"); // TODO l10n
+		menuitem_unloadOtherTabs.setAttribute("label", language.unloadOtherTabs);
+		menuitem_unloadOtherTabs.setAttribute("accesskey", "l");
 		menuitem_unloadOtherTabs.setAttribute("tbattr", "tabbrowser-multiple");
-		menuitem_unloadOtherTabs.setAttribute(
-			"oncommand", "gBrowser.LullTheTabs.unloadOtherTabs(gBrowser.mContextTab);");
+		menuitem_unloadOtherTabs.setAttribute("oncommand", "gBrowser.LullTheTabs.unloadOtherTabs(gBrowser.mContextTab);");
 		tabContextMenu.insertBefore(menuitem_unloadOtherTabs, openTabInWindow);
 
 		// add "Never Unload" menuitem to tab context menu
 		let menuitem_neverUnload = document.createElement("menuitem");
 		menuitem_neverUnload.setAttribute("id", "lull-the-tabs-never-unload");
-		menuitem_neverUnload.setAttribute("label", "Never Unload Tab"); // TODO l10n
+		menuitem_neverUnload.setAttribute("label", language.neverUnload);
+		menuitem_neverUnload.setAttribute("accesskey", "e");
 		menuitem_neverUnload.setAttribute("type", "checkbox");
 		menuitem_neverUnload.setAttribute("autocheck", "false");
 		menuitem_neverUnload.setAttribute("oncommand", "gBrowser.LullTheTabs.toggleWhitelist(gBrowser.mContextTab, event);");
@@ -795,8 +853,10 @@ LullTheTabs.prototype = {
 				referrer: aReferrer,
 			}],
 		};
-		if(aTitle != "") {
-			session.entries[0].title = aTitle + ' :: ' + aHref;
+		if(aTitle) {
+			session.entries[0].title = '(' + aTitle + ')';
+		} else {
+			session.entries[0].title = '(' + aHref + ')';
 		}
 		if(aWindow.gBrowser.selectedTab.getAttribute("privateTab-isPrivate")) {
 			session.attributes = { "privateTab-isPrivate": "true" };

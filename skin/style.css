@@ -1,8 +1,15 @@
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
 @-moz-document url("chrome://browser/content/browser.xul") {
-	.tabbrowser-tab[pending=true],
-	menuitem.alltabs-item[pending=true] {
+	menuitem.alltabs-item[pending=true],
+	.tabbrowser-tab[pending=true] .tab-label {
+		opacity: .5;
+	}
+
+	.tabbrowser-tab[pending=true]:not([bgpending]) .tab-icon-image {
+		border-radius: 90%;
+		border: 2px dashed rgba(0, 0, 0, .5);
+		padding: 1px;
 		opacity: .5;
 	}
 
@@ -21,9 +28,5 @@
 
 	#lull-the-tabs-button[protected]:hover {
 		-moz-image-region: rect(0px 64px 16px 48px);
-	}
-
-	.tabbrowser-tab[bgpending] .tab-label {
-		text-decoration: underline wavy;
 	}
 }

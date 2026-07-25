@@ -15,6 +15,7 @@
 	<setting type="bool" pref="extensions.lull-the-tabs.autoUnload" title="Automatically unload inactive tabs:" />
 	<setting type="integer" pref="extensions.lull-the-tabs.unloadTimeout" title="Unload timeout, in minutes:" />
 	<setting type="string" pref="extensions.lull-the-tabs.exceptionList" title="Domain exception list:">Use ; as a delimiter for multiple domains</setting>
+	<setting type="bool" pref="extensions.lull-the-tabs.preventAutoUnloadAudioTab" title="Don't automatically unload tabs playing audio:" />
 	<setting type="radio" pref="extensions.lull-the-tabs.selectOnClose" title="When closing a tab, select:">
 		<radiogroup orient="horizontal" preference="">
 			<radio value="1" label="nearest loaded tab"/>
