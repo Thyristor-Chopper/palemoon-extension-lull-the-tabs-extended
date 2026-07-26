@@ -1,11 +1,11 @@
 const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
-Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource://gre/modules/XPCOMUtils.jsm");
+Cu.import('resource://gre/modules/Services.jsm');
+Cu.import('resource://gre/modules/XPCOMUtils.jsm');
 
-const branch = "extensions.lull-the-tabs.";
-const ON_DEMAND_PREF = "browser.sessionstore.restore_on_demand";
-const PINNED_ON_DEMAND_PREF = "browser.sessionstore.restore_pinned_tabs_on_demand";
-const LOAD_IN_BACKGROUND = "browser.tabs.loadInBackground";
+const branch = 'extensions.lull-the-tabs.';
+const ON_DEMAND_PREF = 'browser.sessionstore.restore_on_demand';
+const PINNED_ON_DEMAND_PREF = 'browser.sessionstore.restore_pinned_tabs_on_demand';
+const LOAD_IN_BACKGROUND = 'browser.tabs.loadInBackground';
 
 const DEFAULT_PREFS = {
 	importBarTab: true,
@@ -16,23 +16,23 @@ const DEFAULT_PREFS = {
 	openNextToCurrent: false,
 	autoUnload: false,
 	unloadTimeout: 120,
-	exceptionList: "",
+	exceptionList: '',
 	selectOnClose: 1,
 	leftIsNearest: false,
 	preventAutoUnloadAudioTab: false,
 	unloadAudioTabRetryDelay: 30,
 };
 
-XPCOMUtils.defineLazyServiceGetter(this, "gSessionStore", "@mozilla.org/browser/sessionstore;1", "nsISessionStore");
-XPCOMUtils.defineLazyServiceGetter(this, "eTLDService", "@mozilla.org/network/effective-tld-service;1", "nsIEffectiveTLDService");
-XPCOMUtils.defineLazyServiceGetter(this, "IDNService", "@mozilla.org/network/idn-service;1", "nsIIDNService");
-XPCOMUtils.defineLazyServiceGetter(this, "gFaviconService", "@mozilla.org/browser/favicon-service;1", "nsIFaviconService");
-XPCOMUtils.defineLazyServiceGetter(this, "gHistoryService", "@mozilla.org/browser/nav-history-service;1", "nsINavHistoryService");
-XPCOMUtils.defineLazyModuleGetter(this, "PlacesUtils", "resource://gre/modules/PlacesUtils.jsm");
-XPCOMUtils.defineLazyModuleGetter(this, "PrivateBrowsingUtils", "resource://gre/modules/PrivateBrowsingUtils.jsm");
+XPCOMUtils.defineLazyServiceGetter(this, 'gSessionStore', '@mozilla.org/browser/sessionstore;1', 'nsISessionStore');
+XPCOMUtils.defineLazyServiceGetter(this, 'eTLDService', '@mozilla.org/network/effective-tld-service;1', 'nsIEffectiveTLDService');
+XPCOMUtils.defineLazyServiceGetter(this, 'IDNService', '@mozilla.org/network/idn-service;1', 'nsIIDNService');
+XPCOMUtils.defineLazyServiceGetter(this, 'gFaviconService', '@mozilla.org/browser/favicon-service;1', 'nsIFaviconService');
+XPCOMUtils.defineLazyServiceGetter(this, 'gHistoryService', '@mozilla.org/browser/nav-history-service;1', 'nsINavHistoryService');
+XPCOMUtils.defineLazyModuleGetter(this, 'PlacesUtils', 'resource://gre/modules/PlacesUtils.jsm');
+XPCOMUtils.defineLazyModuleGetter(this, 'PrivateBrowsingUtils', 'resource://gre/modules/PrivateBrowsingUtils.jsm');
 
-const styleSheetService = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
-const styleSheetURI = Services.io.newURI("chrome://lull-the-tabs/skin/style.css", null, null);
+const styleSheetService = Cc['@mozilla.org/content/style-sheet-service;1'].getService(Ci.nsIStyleSheetService);
+const styleSheetURI = Services.io.newURI('chrome://lull-the-tabs/skin/style.css', null, null);
 
 const stringBundle = Services.strings.createBundle('chrome://lull-the-tabs/locale/lull-the-tabs.properties');
 
@@ -40,7 +40,7 @@ let domRegex = null, gWindowListener = null;
 
 function initPreferences() {
 	const defaultBranch = Services.prefs.getDefaultBranch(branch);
-	const syncBranch = Services.prefs.getDefaultBranch("services.sync.prefs.sync." + branch);
+	const syncBranch = Services.prefs.getDefaultBranch('services.sync.prefs.sync.' + branch);
 	for(const pref in DEFAULT_PREFS) {
 		switch(typeof DEFAULT_PREFS[pref]) {
 			case "string":
@@ -56,22 +56,22 @@ function initPreferences() {
 		syncBranch.setBoolPref(pref, true);
 	}
 
-	if(Services.prefs.getBoolPref(branch + "importBarTab")) {
-		Services.prefs.setBoolPref(branch + "importBarTab", false);
+	if(Services.prefs.getBoolPref(branch + 'importBarTab')) {
+		Services.prefs.setBoolPref(branch + 'importBarTab', false);
 		try {
-			Services.prefs.setCharPref(branch + "exceptionList", Services.prefs.getCharPref("extensions.bartab.whitelist"));
+			Services.prefs.setCharPref(branch + 'exceptionList', Services.prefs.getCharPref('extensions.bartab.whitelist'));
 		} catch(e) {}
 		try {
-			Services.prefs.setBoolPref(branch + "autoUnload", Services.prefs.getBoolPref("extensions.bartab.unloadAfterTimeout"));
-			Services.prefs.setIntPref(branch + "unloadTimeout", Math.round(Services.prefs.getIntPref("extensions.bartab.timeoutUnit") * Services.prefs.getIntPref("extensions.bartab.timeoutValue") / 60));
+			Services.prefs.setBoolPref(branch + 'autoUnload', Services.prefs.getBoolPref('extensions.bartab.unloadAfterTimeout'));
+			Services.prefs.setIntPref(branch + 'unloadTimeout', Math.round(Services.prefs.getIntPref('extensions.bartab.timeoutUnit') * Services.prefs.getIntPref('extensions.bartab.timeoutValue') / 60));
 		} catch(e) {}
 		try {
-			if(!Services.prefs.getBoolPref("extensions.bartab.findClosestLoadedTab")) {
-				Services.prefs.setIntPref(branch + "selectOnClose", 0);
+			if(!Services.prefs.getBoolPref('extensions.bartab.findClosestLoadedTab')) {
+				Services.prefs.setIntPref(branch + 'selectOnClose', 0);
 			}
 		} catch(e) {}
 		try {
-			Services.prefs.setBoolPref(branch + "pauseBackgroundTabs", Services.prefs.getIntPref("extensions.bartab.loadBackgroundTabs") == 1);
+			Services.prefs.setBoolPref(branch + 'pauseBackgroundTabs', Services.prefs.getIntPref('extensions.bartab.loadBackgroundTabs') == 1);
 		} catch(e) {}
 	}
 }
@@ -88,8 +88,8 @@ function getHostOrCustomProtoURL(aURI) {
 function isWhiteListed(aURI) {
 	if(domRegex === null) {
 		try {
-			const exceptionList = Services.prefs.getComplexValue(branch + "exceptionList", Ci.nsISupportsString).data;
-			domRegex = new RegExp("^(" + exceptionList.replace(/;/g,"|").replace(/\./g,"\\.").replace(/\*/g,".*") + ")$");
+			const exceptionList = Services.prefs.getComplexValue(branch + 'exceptionList', Ci.nsISupportsString).data;
+			domRegex = new RegExp('^(' + exceptionList.replace(/;/g, '|').replace(/\./g, '\\.').replace(/\*/g, '.*') + ')$');
 		} catch(e) {
 			return false;
 		}
@@ -110,12 +110,12 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 	if(visibleTabs.length == 1) return null;
 
 	// If leftIsNearest, then try previous sibling first
-	if(Services.prefs.getBoolPref(branch + "leftIsNearest") && aTab.previousSibling && !aTab.previousSibling.hasAttribute("pending"))
+	if(Services.prefs.getBoolPref(branch + 'leftIsNearest') && aTab.previousSibling && !aTab.previousSibling.hasAttribute('pending'))
 		return aTab.previousSibling;
 
 	// The most obvious choice would be the owner tab, if it's active and is
 	// part of the same tab group.
-	if(aTab.owner && Services.prefs.getBoolPref("browser.tabs.selectOwnerOnClose") && !aTab.owner.hasAttribute("pending")) {
+	if(aTab.owner && Services.prefs.getBoolPref('browser.tabs.selectOwnerOnClose') && !aTab.owner.hasAttribute('pending')) {
 		let i = 0;
 		while(i < visibleTabs.length) {
 			if(visibleTabs[i] == aTab.owner)
@@ -136,17 +136,17 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 	let tabIndex = 0;
 	while(tabIndex + 1 < visibleTabs.length && visibleTabs[tabIndex] != aTab && visibleTabs[tabIndex] != aTab.nextSibling) {
 		// This loop will result in tabIndex pointing to one of three places:
-		//		The current tab (visibleTabs[i] == aTab)
-		//		The tab which had one index higher than the current tab, until the
-		//			current tab was closed (visibleTabs[i] == aTab.nextSibling)
-		//		The final tab in the array (tabIndex + 1 == visibleTabs.length)
+		//   The current tab (visibleTabs[i] == aTab)
+		//   The tab which had one index higher than the current tab, until the
+		//     current tab was closed (visibleTabs[i] == aTab.nextSibling)
+		//   The final tab in the array (tabIndex + 1 == visibleTabs.length)
 		tabIndex++;
 	}
 
 	let i = 0;
 	while(tabIndex - i >= 0 || tabIndex + i < visibleTabs.length) {
 		let offsetIncremented = 0;
-		if(tabIndex + i < visibleTabs.length && !visibleTabs[tabIndex + i].hasAttribute("pending") && visibleTabs[tabIndex + i] != aTab)
+		if(tabIndex + i < visibleTabs.length && !visibleTabs[tabIndex + i].hasAttribute('pending') && visibleTabs[tabIndex + i] != aTab)
 			// The '!= aTab' test is to rule out the case where i == 0 and
 			// aTab is being unloaded rather than closed, so that tabIndex
 			// points to aTab instead of its nextSibling.
@@ -160,7 +160,7 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 			offsetIncremented = 1;
 			i++;
 		}
-		if(tabIndex - i >= 0 && !visibleTabs[tabIndex - i].hasAttribute("pending") && visibleTabs[tabIndex - i] != aTab)
+		if(tabIndex - i >= 0 && !visibleTabs[tabIndex - i].hasAttribute('pending') && visibleTabs[tabIndex - i] != aTab)
 			return visibleTabs[tabIndex - i];
 		if(offsetIncremented > 0) {
 			offsetIncremented = 0;
@@ -173,7 +173,7 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 	// to have to nominate a non-active one.
 
 	// Start with the owner, if appropriate.
-	if(aTab.owner && Services.prefs.getBoolPref("browser.tabs.selectOwnerOnClose")) {
+	if(aTab.owner && Services.prefs.getBoolPref('browser.tabs.selectOwnerOnClose')) {
 		let i = 0;
 		while(i < visibleTabs.length) {
 			if(visibleTabs[i] == aTab.owner)
@@ -193,7 +193,7 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 
 	// If we get this far, something's wrong. It shouldn't be possible for
 	// there to not be an adjacent tab unless (visibleTabs.length == 1).
-	Cu.reportError("Lull The Tabs: there are " + visibleTabs.length + " visible tabs, which is greater than 1, but no suitable tab was found from index " + tabIndex);
+	Cu.reportError(`Lull The Tabs: there are ${visibleTabs.length} visible tabs, which is greater than 1, but no suitable tab was found from index ${tabIndex}`);
 	return null;
 }
 
@@ -204,7 +204,7 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 function LullTheTabs(aWindow) {
 	// 실수로 new 없이 호출 방지
 	if(!(this instanceof LullTheTabs))
-		return new LullTheTabs(aWindow);
+		throw new TypeError('Constructor LullTheTabs requires \'new\'');
 	this.init(aWindow);
 }
 
@@ -221,38 +221,38 @@ LullTheTabs.prototype = {
 		this.tabBrowser.tabContainer.addEventListener('TabClose', this, false);
 
 		this.prefBranch = Services.prefs.getBranch(branch);
-		this.prefBranch.addObserver("", this, false);
+		this.prefBranch.addObserver('', this, false);
 
-		if(Services.prefs.getBoolPref(branch + "autoUnload"))
+		if(Services.prefs.getBoolPref(branch + 'autoUnload'))
 			this.startAllTimers();
 
-		if(Services.prefs.getBoolPref(branch + "showContext"))
+		if(Services.prefs.getBoolPref(branch + 'showContext'))
 			this.addContext();
 
-		if(Services.prefs.getBoolPref(branch + "showButton"))
+		if(Services.prefs.getBoolPref(branch + 'showButton'))
 			this.addButton();
 
-		if(Services.prefs.getBoolPref(branch + "pauseBackgroundTabs"))
+		if(Services.prefs.getBoolPref(branch + 'pauseBackgroundTabs'))
 			this.hookOpenInBackground();
 	},
 
 	done() {
 		this.clearAllTimers();
 
-		if(Services.prefs.getBoolPref(branch + "showContext"))
+		if(Services.prefs.getBoolPref(branch + 'showContext'))
 			this.removeContext();
 
-		if(Services.prefs.getBoolPref(branch + "showButton"))
+		if(Services.prefs.getBoolPref(branch + 'showButton'))
 			this.removeButton();
 
-		if(Services.prefs.getBoolPref(branch + "pauseBackgroundTabs"))
+		if(Services.prefs.getBoolPref(branch + 'pauseBackgroundTabs'))
 			this.unhookOpenInBackground();
 
 		this.tabBrowser.tabContainer.removeEventListener('TabOpen', this, false);
 		this.tabBrowser.tabContainer.removeEventListener('TabSelect', this, false);
 		this.tabBrowser.tabContainer.removeEventListener('TabClose', this, false);
 
-		this.prefBranch.removeObserver("", this);
+		this.prefBranch.removeObserver('', this);
 		this.prefBranch = null;
 
 		this.previousTab = null;
@@ -286,34 +286,34 @@ LullTheTabs.prototype = {
 	},
 
 	observe(aSubject, aTopic, aData) {
-		if(aTopic != "nsPref:changed") return;
+		if(aTopic != 'nsPref:changed') return;
 		switch(aData) {
 			case 'autoUnload':
-				if(Services.prefs.getBoolPref(branch + "autoUnload"))
+				if(Services.prefs.getBoolPref(branch + 'autoUnload'))
 					this.startAllTimers();
 				else
 					this.clearAllTimers();
 				break;
 			case 'unloadTimeout':
-				if(Services.prefs.getBoolPref(branch + "autoUnload")) {
+				if(Services.prefs.getBoolPref(branch + 'autoUnload')) {
 					this.clearAllTimers();
 					this.startAllTimers();
 				}
 				break;
 			case 'showContext':
-				if(Services.prefs.getBoolPref(branch + "showContext"))
+				if(Services.prefs.getBoolPref(branch + 'showContext'))
 					this.addContext();
 				else
 					this.removeContext();
 				break;
 			case 'showButton':
-				if(Services.prefs.getBoolPref(branch + "showButton"))
+				if(Services.prefs.getBoolPref(branch + 'showButton'))
 					this.addButton();
 				else
 					this.removeButton();
 				break;
 			case 'pauseBackgroundTabs':
-				if(Services.prefs.getBoolPref(branch + "pauseBackgroundTabs"))
+				if(Services.prefs.getBoolPref(branch + 'pauseBackgroundTabs'))
 					this.hookOpenInBackground();
 				else
 					this.unhookOpenInBackground();
@@ -328,60 +328,60 @@ LullTheTabs.prototype = {
 	onPopupShowing(aEvent) {
 		const tabContextMenu = aEvent.originalTarget;
 		const document = tabContextMenu.ownerDocument;
-		const tab = tabContextMenu.contextTab || tabContextMenu.triggerNode.localName == "tab" ? tabContextMenu.triggerNode : this.tabBrowser.selectedTab;
+		const tab = tabContextMenu.contextTab || tabContextMenu.triggerNode.localName == 'tab' ? tabContextMenu.triggerNode : this.tabBrowser.selectedTab;
 
-		const menuitem_unloadTab = document.getElementById("lull-the-tabs-unload");
-		const menuitem_neverUnload = document.getElementById("lull-the-tabs-never-unload");
+		const menuitem_unloadTab = document.getElementById('lull-the-tabs-unload');
+		const menuitem_neverUnload = document.getElementById('lull-the-tabs-never-unload');
 
-		const needlessToUnload = tab.hasAttribute("pending") || tab.hasAttribute("pinned") && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF);
+		const needlessToUnload = tab.hasAttribute('pending') || tab.hasAttribute('pinned') && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF);
 
 		let host = getHostOrCustomProtoURL(tab.linkedBrowser.currentURI);
 		if(!host) {
-			menuitem_neverUnload.setAttribute("hidden", "true");
+			menuitem_neverUnload.setAttribute('hidden', 'true');
 			if(needlessToUnload)
-				menuitem_unloadTab.setAttribute("disabled", "true");
+				menuitem_unloadTab.setAttribute('disabled', 'true');
 			else
-				menuitem_unloadTab.removeAttribute("disabled");
+				menuitem_unloadTab.removeAttribute('disabled');
 			return;
 		}
 
 		if(isWhiteListed(tab.linkedBrowser.currentURI)) {
 			// If we whitelisting by a wildcard, display it instead of the current host.
-			const whitelist = Services.prefs.getComplexValue(branch + "exceptionList", Ci.nsISupportsString).data?.split(";") ?? [];
+			const whitelist = Services.prefs.getComplexValue(branch + 'exceptionList', Ci.nsISupportsString).data?.split(";") ?? [];
 			for(let i=0; i<whitelist.length; i++) {
-				const reg = new RegExp("^" + whitelist[i].replace(/\./g,"\\.").replace(/\*/g,".*") + "$");
+				const reg = new RegExp('^' + whitelist[i].replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
 				if(reg.test(host)) {
 					host = whitelist[i];
 					break;
 				}
 			}
-			menuitem_neverUnload.setAttribute("checked", "true");
-			menuitem_unloadTab.setAttribute("disabled", "true");
+			menuitem_neverUnload.setAttribute('checked', 'true');
+			menuitem_unloadTab.setAttribute('disabled', 'true');
 		} else {
-			menuitem_neverUnload.removeAttribute("checked");
+			menuitem_neverUnload.removeAttribute('checked');
 			if(needlessToUnload)
-				menuitem_unloadTab.setAttribute("disabled", "true");
+				menuitem_unloadTab.setAttribute('disabled', 'true');
 			else
-				menuitem_unloadTab.removeAttribute("disabled");
+				menuitem_unloadTab.removeAttribute('disabled');
 		}
 
-		menuitem_neverUnload.setAttribute("label", stringBundle.GetStringFromName('neverUnloadHost').replace('%S', host));
-		menuitem_neverUnload.removeAttribute("hidden");
+		menuitem_neverUnload.setAttribute('label', stringBundle.GetStringFromName('neverUnloadHost').replace('%S', host));
+		menuitem_neverUnload.removeAttribute('hidden');
 	},
 
 	onTabOpen(aEvent) {
 		const tab = aEvent.originalTarget;
-		if(!tab.selected && Services.prefs.getBoolPref(branch + "autoUnload"))
+		if(!tab.selected && Services.prefs.getBoolPref(branch + 'autoUnload'))
 			this.startTimer(tab);
 	},
 
 	onTabSelect(aEvent) {
 		this.previousTab = this.selectedTab;
 		this.selectedTab = aEvent.originalTarget;
-		this.selectedTab.removeAttribute("bgpending");
+		this.selectedTab.removeAttribute('bgpending');
 
 		// The previous tab may not be available because it has been closed.
-		if(this.previousTab && Services.prefs.getBoolPref(branch + "autoUnload"))
+		if(this.previousTab && Services.prefs.getBoolPref(branch + 'autoUnload'))
 			this.startTimer(this.previousTab);
 		this.clearTimer(this.selectedTab);
 	},
@@ -396,7 +396,7 @@ LullTheTabs.prototype = {
 			this.previousTab = null;
 
 		// Check selectOnClose option.
-		const selectOnClose = Services.prefs.getIntPref(branch + "selectOnClose");
+		const selectOnClose = Services.prefs.getIntPref(branch + 'selectOnClose');
 		if(selectOnClose == 0) {
 			// Return if browser default behaviour is selected.
 			return;
@@ -437,7 +437,7 @@ LullTheTabs.prototype = {
 		}
 
 		// Ignore tabs that are pinned, already unloaded or whitelisted, unless the unload is forced.
-		if(isWhiteListed(aTab.linkedBrowser.currentURI) && (!aOptions || aOptions && !aOptions.force) || aTab.hasAttribute("pending") || !Services.prefs.getBoolPref(ON_DEMAND_PREF) || aTab.hasAttribute("pinned") && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF)) return;
+		if(isWhiteListed(aTab.linkedBrowser.currentURI) && (!aOptions || aOptions && !aOptions.force) || aTab.hasAttribute('pending') || !Services.prefs.getBoolPref(ON_DEMAND_PREF) || aTab.hasAttribute('pinned') && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF)) return;
 
 		// If we were called from the timer and the browser is in full-screen, reschedule the unloading.
 		if(aOptions && aOptions.timer && (this.browserWindow.document.fullscreenElement || this.browserWindow.document.mozFullScreenElement)) {
@@ -452,7 +452,7 @@ LullTheTabs.prototype = {
 			// Make sure that we're not on this tab.
 			if(aTab.selected) {
 				// If we are, then check selectOnUnload option.
-				if(Services.prefs.getIntPref(branch + "selectOnUnload") == 0) {
+				if(Services.prefs.getIntPref(branch + 'selectOnUnload') == 0) {
 					// Find the closest tab that isn't unloaded.
 					const activeTab = findClosestLoadedTab(aTab, tabbrowser);
 					if(activeTab)
@@ -523,15 +523,16 @@ LullTheTabs.prototype = {
 					try {
 						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
 					} catch(e) {
-						const userContextId = tabbrowser.getAttribute("usercontextid") || 0;
-						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
+						// Pale Moon의 Windows XP용 포크에서는 매개변수 2개를 넘겨야 함
+						const userContextID = tabbrowser.getAttribute('usercontextid') || 0;
+						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI, userContextID);
 					}
 				} else if(tabbrowser._unifiedComplete) {
 					try {
 						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI);
 					} catch(e) {
-						const userContextId = tabbrowser.getAttribute("usercontextid") || 0;
-						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
+						const userContextID = tabbrowser.getAttribute('usercontextid') || 0;
+						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI, userContextID);
 					}
 				}
 				delete browser.registeredOpenURI;
@@ -567,10 +568,10 @@ LullTheTabs.prototype = {
 		let host = getHostOrCustomProtoURL(aTab.linkedBrowser.currentURI);
 		if(!host) return;
 
-		const whitelist = Services.prefs.getComplexValue(branch + "exceptionList", Ci.nsISupportsString).data?.split(";") ?? [];
+		const whitelist = Services.prefs.getComplexValue(branch + 'exceptionList', Ci.nsISupportsString).data?.split(";") ?? [];
 		if(isWhiteListed(aTab.linkedBrowser.currentURI)) {
 			for(let i=0; i<whitelist.length; i++) {
-				const reg = new RegExp("^" + whitelist[i].replace(/\./g,"\\.").replace(/\*/g,".*") + "$");
+				const reg = new RegExp('^' + whitelist[i].replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
 				if(reg.test(host)) {
 					whitelist.splice(i, 1);
 					break;
@@ -579,20 +580,19 @@ LullTheTabs.prototype = {
 		} else {
 			if(e.ctrlKey) {
 				try {
-					host = "(*.)?" + IDNService.convertACEtoUTF8(eTLDService.getBaseDomainFromHost(host));
+					host = '(*.)?' + IDNService.convertACEtoUTF8(eTLDService.getBaseDomainFromHost(host));
 				} catch(e) {}
 			}
 			whitelist.push(host);
 		}
 
-		const str = Cc["@mozilla.org/supports-string;1"].createInstance(Ci.nsISupportsString);
-		str.data = whitelist.join(";");
-		Services.prefs.setComplexValue(branch + "exceptionList", Ci.nsISupportsString, str);
+		const str = Cc['@mozilla.org/supports-string;1'].createInstance(Ci.nsISupportsString);
+		str.data = whitelist.join(';');
+		Services.prefs.setComplexValue(branch + 'exceptionList', Ci.nsISupportsString, str);
 		domRegex = null;
 
-		if(this.button && aTab == this.tabBrowser.selectedTab) {
+		if(this.button && aTab == this.tabBrowser.selectedTab)
 			this.updateButton(aTab.linkedBrowser.currentURI);
-		}
 	},
 
 	startTimer(aTab, aTimeout) {
@@ -611,10 +611,10 @@ LullTheTabs.prototype = {
 			}, Services.prefs.getIntPref(branch + 'unloadAudioTabRetryDelay') * 1000);
 			return;
 		}
-		if(aTab.hasAttribute("pending")) return;
+		if(aTab.hasAttribute('pending')) return;
 		if(aTab._lullTheTabsTimer)
 			this.clearTimer(aTab);
-		const defaultTimeout = Services.prefs.getIntPref(branch + "unloadTimeout") * 60 * 1000;
+		const defaultTimeout = Services.prefs.getIntPref(branch + 'unloadTimeout') * 60 * 1000;
 		const timeout = aTimeout ? Math.min(defaultTimeout, aTimeout * 60 * 1000) : defaultTimeout;
 		// The timer will be removed automatically since
 		// unloadTab() will close and replace the original tab.
@@ -644,35 +644,35 @@ LullTheTabs.prototype = {
 
 	addContext() {
 		const document = this.tabBrowser.ownerDocument;
-		const tabContextMenu = document.getElementById("tabContextMenu");
-		const openTabInWindow = document.getElementById("context_openTabInWindow");
+		const tabContextMenu = document.getElementById('tabContextMenu');
+		const openTabInWindow = document.getElementById('context_openTabInWindow');
 
-		// add "Unload Tab" menuitem to tab context menu
-		const menuitem_unloadTab = document.createElement("menuitem");
-		menuitem_unloadTab.setAttribute("id", "lull-the-tabs-unload");
-		menuitem_unloadTab.setAttribute("label", stringBundle.GetStringFromName('unloadTab'));
-		menuitem_unloadTab.setAttribute("accesskey", "n");
-		menuitem_unloadTab.setAttribute("tbattr", "tabbrowser-multiple");
-		menuitem_unloadTab.setAttribute("oncommand", "gBrowser.LullTheTabs.unloadTab(gBrowser.mContextTab);");
+		// add 'Unload Tab' menuitem to tab context menu
+		const menuitem_unloadTab = document.createElement('menuitem');
+		menuitem_unloadTab.setAttribute('id', 'lull-the-tabs-unload');
+		menuitem_unloadTab.setAttribute('label', stringBundle.GetStringFromName('unloadTab'));
+		menuitem_unloadTab.setAttribute('accesskey', 'n');
+		menuitem_unloadTab.setAttribute('tbattr', 'tabbrowser-multiple');
+		menuitem_unloadTab.setAttribute('oncommand', 'gBrowser.LullTheTabs.unloadTab(gBrowser.mContextTab);');
 		tabContextMenu.insertBefore(menuitem_unloadTab, openTabInWindow);
 
-		// add "Unload Other Tabs" menuitem to tab context menu
-		const menuitem_unloadOtherTabs = document.createElement("menuitem");
-		menuitem_unloadOtherTabs.setAttribute("id", "lull-the-tabs-unload-others");
-		menuitem_unloadOtherTabs.setAttribute("label", stringBundle.GetStringFromName('unloadOtherTabs'));
-		menuitem_unloadOtherTabs.setAttribute("accesskey", "l");
-		menuitem_unloadOtherTabs.setAttribute("tbattr", "tabbrowser-multiple");
-		menuitem_unloadOtherTabs.setAttribute("oncommand", "gBrowser.LullTheTabs.unloadOtherTabs(gBrowser.mContextTab);");
+		// add 'Unload Other Tabs' menuitem to tab context menu
+		const menuitem_unloadOtherTabs = document.createElement('menuitem');
+		menuitem_unloadOtherTabs.setAttribute('id', 'lull-the-tabs-unload-others');
+		menuitem_unloadOtherTabs.setAttribute('label', stringBundle.GetStringFromName('unloadOtherTabs'));
+		menuitem_unloadOtherTabs.setAttribute('accesskey', 'l');
+		menuitem_unloadOtherTabs.setAttribute('tbattr', 'tabbrowser-multiple');
+		menuitem_unloadOtherTabs.setAttribute('oncommand', 'gBrowser.LullTheTabs.unloadOtherTabs(gBrowser.mContextTab);');
 		tabContextMenu.insertBefore(menuitem_unloadOtherTabs, openTabInWindow);
 
-		// add "Never Unload" menuitem to tab context menu
-		const menuitem_neverUnload = document.createElement("menuitem");
-		menuitem_neverUnload.setAttribute("id", "lull-the-tabs-never-unload");
-		menuitem_neverUnload.setAttribute("label", stringBundle.GetStringFromName('neverUnload'));
-		menuitem_neverUnload.setAttribute("accesskey", "e");
-		menuitem_neverUnload.setAttribute("type", "checkbox");
-		menuitem_neverUnload.setAttribute("autocheck", "false");
-		menuitem_neverUnload.setAttribute("oncommand", "gBrowser.LullTheTabs.toggleWhitelist(gBrowser.mContextTab, event);");
+		// add 'Never Unload' menuitem to tab context menu
+		const menuitem_neverUnload = document.createElement('menuitem');
+		menuitem_neverUnload.setAttribute('id', 'lull-the-tabs-never-unload');
+		menuitem_neverUnload.setAttribute('label', stringBundle.GetStringFromName('neverUnload'));
+		menuitem_neverUnload.setAttribute('accesskey', 'e');
+		menuitem_neverUnload.setAttribute('type', 'checkbox');
+		menuitem_neverUnload.setAttribute('autocheck', 'false');
+		menuitem_neverUnload.setAttribute('oncommand', 'gBrowser.LullTheTabs.toggleWhitelist(gBrowser.mContextTab, event);');
 		tabContextMenu.insertBefore(menuitem_neverUnload, openTabInWindow);
 
 		tabContextMenu.addEventListener('popupshowing', this, false);
@@ -680,29 +680,29 @@ LullTheTabs.prototype = {
 
 	removeContext() {
 		const document = this.tabBrowser.ownerDocument;
-		const tabContextMenu = document.getElementById("tabContextMenu");
+		const tabContextMenu = document.getElementById('tabContextMenu');
 
 		tabContextMenu.removeEventListener('popupshowing', this, false);
 
 		// remove tab context menu related stuff
-		const menuitem_unloadTab = document.getElementById("lull-the-tabs-unload");
+		const menuitem_unloadTab = document.getElementById('lull-the-tabs-unload');
 		menuitem_unloadTab?.parentNode?.removeChild(menuitem_unloadTab);
-		const menuitem_unloadOtherTabs = document.getElementById("lull-the-tabs-unload-others");
+		const menuitem_unloadOtherTabs = document.getElementById('lull-the-tabs-unload-others');
 		menuitem_unloadOtherTabs?.parentNode?.removeChild(menuitem_unloadOtherTabs);
-		const menuitem_neverUnload = document.getElementById("lull-the-tabs-never-unload");
+		const menuitem_neverUnload = document.getElementById('lull-the-tabs-never-unload');
 		menuitem_neverUnload?.parentNode?.removeChild(menuitem_neverUnload);
 	},
 
 	updateButton(aURI) {
-		if(isWhiteListed(aURI) || this.tabBrowser.selectedTab.hasAttribute("pinned") && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF)) {
-			if(!this.button.hasAttribute("protected")) {
-				this.button.setAttribute("protected", "true");
-				this.button.setAttribute("tooltiptext", "Active tab is protected from unloading");
+		if(isWhiteListed(aURI) || this.tabBrowser.selectedTab.hasAttribute('pinned') && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF)) {
+			if(!this.button.hasAttribute('protected')) {
+				this.button.setAttribute('protected', 'true');
+				this.button.setAttribute('tooltiptext', stringBundle.GetStringFromName('unloadProtected'));
 			}
 		} else {
-			if(this.button.hasAttribute("protected")) {
-				this.button.removeAttribute("protected");
-				this.button.setAttribute("tooltiptext", "Unload active tab");
+			if(this.button.hasAttribute('protected')) {
+				this.button.removeAttribute('protected');
+				this.button.setAttribute('tooltiptext', stringBundle.GetStringFromName('unloadActiveTab'));
 			}
 		}
 	},
@@ -719,18 +719,18 @@ LullTheTabs.prototype = {
 
 	onClickButton(aEvent) {
 		if((aEvent.ctrlKey || aEvent.metaKey) && aEvent.altKey)
-			this.browserWindow.BrowserOpenAddonsMgr("addons://detail/lull-the-tabs@Off.JustOff/preferences");
+			this.browserWindow.BrowserOpenAddonsMgr('addons://detail/lull-the-tabs@Off.JustOff/preferences');
 		else
 			this.unloadTab(this.tabBrowser.selectedTab, { force: aEvent.ctrlKey || aEvent.metaKey, reload: aEvent.shiftKey });
 	},
 
 	addButton() {
 		const document = this.tabBrowser.ownerDocument;
-		const button = document.createElement("image");
-		button.setAttribute("id", "lull-the-tabs-button");
-		button.setAttribute("class", "urlbar-icon");
-		button.setAttribute("tooltiptext", "Unload active tab");
-		button.setAttribute("onclick", "gBrowser.LullTheTabs.onClickButton(event);"); 
+		const button = document.createElement('image');
+		button.setAttribute('id', 'lull-the-tabs-button');
+		button.setAttribute('class', 'urlbar-icon');
+		button.setAttribute('tooltiptext', stringBundle.GetStringFromName('unloadActiveTab'));
+		button.setAttribute('onclick', 'gBrowser.LullTheTabs.onClickButton(event);');
 		const urlBarIcons = document.getElementById("urlbar-icons");
 		urlBarIcons.insertBefore(button, urlBarIcons.firstChild);
 		this.button = button;
@@ -759,15 +759,15 @@ LullTheTabs.prototype = {
 		} else {
 			session.entries[0].title = '(' + aHref + ')';
 		}
-		if(aWindow.gBrowser.selectedTab.getAttribute("privateTab-isPrivate")) {
-			session.attributes = { "privateTab-isPrivate": "true" };
+		if(aWindow.gBrowser.selectedTab.getAttribute('privateTab-isPrivate')) {
+			session.attributes = { 'privateTab-isPrivate': 'true' };
 		}
 		const asyncFavicons = gFaviconService.QueryInterface(Ci.mozIAsyncFavicons);
 		const sHref = aHref.split(/\/+/g);
-		asyncFavicons.getFaviconURLForPage(Services.io.newURI(sHref[0] + "//" + sHref[1], null, null), aURI => {
+		asyncFavicons.getFaviconURLForPage(Services.io.newURI(sHref[0] + '//' + sHref[1], null, null), aURI => {
 			if(aURI && aURI.spec) {
 				session.image = aURI.spec;
-			} else if(typeof sHref[1] == "string") {
+			} else if(typeof sHref[1] == 'string') {
 				const hist = gHistoryService;
 				const hopt = hist.getNewQueryOptions();
 				hopt.queryType = Ci.nsINavHistoryQueryOptions.QUERY_TYPE_HISTORY;
@@ -778,19 +778,18 @@ LullTheTabs.prototype = {
 				const hresult = hist.executeQuery(hquery, hopt);
 				hresult.root.containerOpen = true;
 				if(hresult.root.childCount) {
-					let info = hresult.root.getChild(0);
-					if(info.icon) {
+					const info = hresult.root.getChild(0);
+					if(info.icon)
 						session.image = info.icon;
-					}
 				}
 				hresult.root.containerOpen = false;
 			}
 			const newtab = aWindow.gBrowser.addTab(null, {skipAnimation: true});
 			gSessionStore.setTabState(newtab, JSON.stringify(session));
-			newtab.setAttribute("bgpending", true);
-			if(Services.prefs.getBoolPref(branch + "openNextToCurrent")) {
+			newtab.setAttribute('bgpending', true);
+			if(Services.prefs.getBoolPref(branch + 'openNextToCurrent')) {
 				aWindow.gBrowser.moveTabTo(newtab, aWindow.gBrowser.selectedTab._tPos + 1);
-			} else if(Services.prefs.getBoolPref("browser.tabs.insertRelatedAfterCurrent")) {
+			} else if(Services.prefs.getBoolPref('browser.tabs.insertRelatedAfterCurrent')) {
 				const newTabPos = (aWindow.gBrowser._lastRelatedTab || aWindow.gBrowser.selectedTab)._tPos + 1;
 				if(aWindow.gBrowser._lastRelatedTab) {
 					aWindow.gBrowser._lastRelatedTab.owner = null;
@@ -800,7 +799,7 @@ LullTheTabs.prototype = {
 				aWindow.gBrowser.moveTabTo(newtab, newTabPos);
 				aWindow.gBrowser._lastRelatedTab = newtab;
 			}
-			if(PrivateBrowsingUtils.isWindowPrivate(aWindow) || aWindow.gBrowser.selectedTab.getAttribute("privateTab-isPrivate")) return;
+			if(PrivateBrowsingUtils.isWindowPrivate(aWindow) || aWindow.gBrowser.selectedTab.getAttribute('privateTab-isPrivate')) return;
 			const places = [{
 				uri: Services.io.newURI(aHref, null, null),
 				title: aTitle,
@@ -817,45 +816,45 @@ LullTheTabs.prototype = {
 		const gContextMenu = aWindow.gContextMenu;
 		if(Services.prefs.getBoolPref(LOAD_IN_BACKGROUND)) {
 			aWindow.urlSecurityCheck(gContextMenu.linkURL, aEvent.target.ownerDocument.nodePrincipal);
-			this.openInBackground(aWindow, gContextMenu.linkURL, gContextMenu.link ? gContextMenu.link.textContent.trim() : "", aWindow.content.location.href);
+			this.openInBackground(aWindow, gContextMenu.linkURL, gContextMenu.link ? gContextMenu.link.textContent.trim() : '', aWindow.content.location.href);
 		} else {
 			gContextMenu.openLinkInTab(aEvent);
 		}
 	},
 
 	hookOpenInBackground() {
-		const openlinkintab = this.tabBrowser.ownerDocument.getElementById("context-openlinkintab");
-		this.bgCommand = openlinkintab.getAttribute("oncommand");
-		openlinkintab.setAttribute("oncommand", "gBrowser.LullTheTabs.contextNewTab(window, event);")
+		const openlinkintab = this.tabBrowser.ownerDocument.getElementById('context-openlinkintab');
+		this.bgCommand = openlinkintab.getAttribute('oncommand');
+		openlinkintab.setAttribute('oncommand', 'gBrowser.LullTheTabs.contextNewTab(window, event);')
 
 		const win = this.browserWindow;
 		const openInBackground = this.openInBackground;
 		win.original_handleLinkClick = win.handleLinkClick;
 		win.handleLinkClick = function handleLinkClick(event, href, linkNode) {
 			// Based on code from /browser/base/content/browser.js from Pale Moon 27.x 
-			if(event.button == 2) // right click
+			if(event.button == 2)  // right click
 				return false;
 
 			const doc = event.target.ownerDocument;
 
 			const where = win.whereToOpenLink(event);
-			if(where == "current") {
-				// Respect Tab Mix Plus "protected" attribute
-				if(win.gBrowser.selectedTab.hasAttribute("protected") && href.split('#')[0] != doc.documentURIObject.specIgnoringRef)
-					where = "tab";
+			if(where == 'current') {
+				// Respect Tab Mix Plus 'protected' attribute
+				if(win.gBrowser.selectedTab.hasAttribute('protected') && href.split('#')[0] != doc.documentURIObject.specIgnoringRef)
+					where = 'tab';
 				else
 					return false;
 			}
 
-			if(where == "save") {
-				win.saveURL(href, linkNode ? win.gatherTextUnder(linkNode) : "", null, true, true, doc.documentURIObject, doc);
+			if(where == 'save') {
+				win.saveURL(href, linkNode ? win.gatherTextUnder(linkNode) : '', null, true, true, doc.documentURIObject, doc);
 				event.preventDefault();
 				return true;
 			}
 
 			win.urlSecurityCheck(href, doc.nodePrincipal);
-			if(where == "tab" && Services.prefs.getBoolPref(LOAD_IN_BACKGROUND))
-				openInBackground(win, href, linkNode ? win.gatherTextUnder(linkNode).trim() : "", doc.documentURIObject.spec);
+			if(where == 'tab' && Services.prefs.getBoolPref(LOAD_IN_BACKGROUND))
+				openInBackground(win, href, linkNode ? win.gatherTextUnder(linkNode).trim() : '', doc.documentURIObject.spec);
 			else
 				win.openLinkIn(href, where, { referrerURI: doc.documentURIObject, charset: doc.characterSet });
 			event.preventDefault();
@@ -864,7 +863,7 @@ LullTheTabs.prototype = {
 	},
 
 	unhookOpenInBackground() {
-		this.tabBrowser.ownerDocument.getElementById("context-openlinkintab").setAttribute("oncommand", this.bgCommand);
+		this.tabBrowser.ownerDocument.getElementById('context-openlinkintab').setAttribute('oncommand', this.bgCommand);
 		this.bgCommand = null;
 
 		this.browserWindow.handleLinkClick = this.browserWindow.original_handleLinkClick;
@@ -874,21 +873,21 @@ LullTheTabs.prototype = {
 
 const globalPrefsWatcher = {
 	observe(aSubject, aTopic, aData) {
-		if(aTopic != "nsPref:changed" || aData != "exceptionList") return;
+		if(aTopic != 'nsPref:changed' || aData != 'exceptionList') return;
 
-		const exceptionList = Services.prefs.getBranch(branch).getComplexValue("exceptionList", Ci.nsISupportsString).data;
-		if(exceptionList == "")
-			Services.prefs.getBranch(branch).clearUserPref("exceptionList");
+		const exceptionList = Services.prefs.getBranch(branch).getComplexValue('exceptionList', Ci.nsISupportsString).data;
+		if(exceptionList == '')
+			Services.prefs.getBranch(branch).clearUserPref('exceptionList');
 		domRegex = null;
 	},
 
 	register() {
 		this.prefBranch = Services.prefs.getBranch(branch);
-		this.prefBranch.addObserver("", this, false);
+		this.prefBranch.addObserver('', this, false);
 	},
 
 	unregister() {
-		this.prefBranch.removeObserver("", this);
+		this.prefBranch.removeObserver('', this);
 		this.prefBranch = null;
 	},
 };
@@ -899,9 +898,9 @@ function BrowserWindowObserver(aHandlers) {
 
 BrowserWindowObserver.prototype = {
 	observe(aSubject, aTopic, aData) {
-		if(aTopic == "domwindowopened")
-			aSubject.QueryInterface(Ci.nsIDOMWindow).addEventListener("load", this, false);
-		else if(aTopic == "domwindowclosed" && aSubject.document.documentElement.getAttribute("windowtype") == "navigator:browser")
+		if(aTopic == 'domwindowopened')
+			aSubject.QueryInterface(Ci.nsIDOMWindow).addEventListener('load', this, false);
+		else if(aTopic == 'domwindowclosed' && aSubject.document.documentElement.getAttribute('windowtype') == 'navigator:browser')
 			this.handlers.onShutdown(aSubject);
 	},
 
@@ -909,7 +908,7 @@ BrowserWindowObserver.prototype = {
 		const aWindow = aEvent.currentTarget;
 		aWindow.removeEventListener(aEvent.type, this, false);
 
-		if(aWindow.document.documentElement.getAttribute("windowtype") == "navigator:browser")
+		if(aWindow.document.documentElement.getAttribute('windowtype') == 'navigator:browser')
 			this.handlers.onStartup(aWindow);
 	},
 };
@@ -937,7 +936,7 @@ function startup(aData, aReason) {
 	});
 	Services.ww.registerNotification(gWindowListener);
 
-	const winenu = Services.wm.getEnumerator("navigator:browser");
+	const winenu = Services.wm.getEnumerator('navigator:browser');
 	while(winenu.hasMoreElements())
 		browserWindowStartup(winenu.getNext());
 }
@@ -948,7 +947,7 @@ function shutdown(aData, aReason) {
 	Services.ww.unregisterNotification(gWindowListener);
 	gWindowListener = null;
 
-	const winenu = Services.wm.getEnumerator("navigator:browser");
+	const winenu = Services.wm.getEnumerator('navigator:browser');
 	while(winenu.hasMoreElements())
 		browserWindowShutdown(winenu.getNext());
 
