@@ -533,12 +533,16 @@ LullTheTabs.prototype = {
 		// Close the original tab.	We're taking the long way round to
 		// ensure the nsISessionStore service won't save this in the
 		// recently closed tabs.
-		const browser = tabbrowser.getBrowserForTab(aTab);
 		if(tabbrowser._beginRemoveTab(aTab, true, null, false)) {
-			tabbrowser._endRemoveTab(aTab);
+			const browser = tabbrowser.getBrowserForTab(aTab);
 			if(browser.registeredOpenURI) {
 				if(tabbrowser._placesAutocomplete) {
-					tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
+					try {
+						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI);
+					} catch(e) {
+						const userContextId = tabbrowser.getAttribute("usercontextid") || 0;
+						tabbrowser._placesAutocomplete.unregisterOpenPage(browser.registeredOpenURI, userContextId);
+					}
 				} else if(tabbrowser._unifiedComplete) {
 					try {
 						tabbrowser._unifiedComplete.unregisterOpenPage(browser.registeredOpenURI);
@@ -549,6 +553,7 @@ LullTheTabs.prototype = {
 				}
 				delete browser.registeredOpenURI;
 			}
+			tabbrowser._endRemoveTab(aTab);
 		}
 	},
 
