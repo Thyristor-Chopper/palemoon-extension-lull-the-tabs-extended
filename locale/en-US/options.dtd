@@ -1,0 +1,22 @@
+<!ENTITY lullthetabs.options.enabletabunloading.label "Enable tab unloading">
+<!ENTITY lullthetabs.options.enabletabunloading.description "And don't load tabs until selected on browser start">
+<!ENTITY lullthetabs.options.showcontext.label "Show unloading controls in the tab context menu">
+<!ENTITY lullthetabs.options.showbutton.label "Show the unload button in the address bar">
+<!ENTITY lullthetabs.options.allowunloadingpinned.label "Allow unloading of pinned tabs">
+<!ENTITY lullthetabs.options.allowunloadingpinned.description "And don't load them on browser start">
+<!ENTITY lullthetabs.options.selectonunload.label "When unloading a tab, select">
+<!ENTITY lullthetabs.options.selectonunload.nearest "nearest loaded tab">
+<!ENTITY lullthetabs.options.selectonunload.previous "previously selected tab">
+<!ENTITY lullthetabs.options.pausebackground.label "Don't load tabs that open in the background">
+<!ENTITY lullthetabs.options.opennexttocurrent.label "Open background tabs next to the current one">
+<!ENTITY lullthetabs.options.opennexttocurrent.description "Applies when the option above is activated">
+<!ENTITY lullthetabs.options.autounload.label "Automatically unload inactive tabs">
+<!ENTITY lullthetabs.options.unloadtimeout.label "Unload timeout, in minutes">
+<!ENTITY lullthetabs.options.exceptionlist.label "Domain exception list">
+<!ENTITY lullthetabs.options.exceptionlist.description "Use ; as a delimiter for multiple domains">
+<!ENTITY lullthetabs.options.preventunloadaudio.label "Don't automatically unload tabs playing audio">
+<!ENTITY lullthetabs.options.selectonclose.label "When closing a tab, select">
+<!ENTITY lullthetabs.options.selectonclose.nearest "nearest loaded tab">
+<!ENTITY lullthetabs.options.selectonclose.previous "previously selected tab">
+<!ENTITY lullthetabs.options.selectonclose.default "browser default">
+<!ENTITY lullthetabs.options.leftisnearest.label "Consider the left adjacent tab as the nearest">

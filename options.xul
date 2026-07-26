@@ -1,27 +1,38 @@
 <?xml version="1.0" ?>
+
+<!DOCTYPE vbox SYSTEM "chrome://lull-the-tabs/locale/options.dtd">
+
 <vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
-	<setting type="bool" pref="browser.sessionstore.restore_on_demand" title="Enable tab unloading:">And don't load tabs until selected on browser start</setting>
-	<setting type="bool" pref="extensions.lull-the-tabs.showContext" title="Show unloading controls in the tab context menu:" />
-	<setting type="bool" pref="extensions.lull-the-tabs.showButton" title="Show the unload button in the address bar:" />
-	<setting type="bool" pref="browser.sessionstore.restore_pinned_tabs_on_demand" title="Allow unloading of pinned tabs:">And don't load them on browser start</setting>
-	<setting type="radio" pref="extensions.lull-the-tabs.selectOnUnload" title="When unloading a tab, select:">
+	<setting type="bool" pref="browser.sessionstore.restore_on_demand" title="&lullthetabs.options.enabletabunloading.label;:">
+		&lullthetabs.options.enabletabunloading.description;
+	</setting>
+	<setting type="bool" pref="extensions.lull-the-tabs.showContext" title="&lullthetabs.options.showcontext.label;:" />
+	<setting type="bool" pref="extensions.lull-the-tabs.showButton" title="&lullthetabs.options.showbutton.label;:" />
+	<setting type="bool" pref="browser.sessionstore.restore_pinned_tabs_on_demand" title="&lullthetabs.options.allowunloadingpinned.label;:">
+		&lullthetabs.options.allowunloadingpinned.description;
+	</setting>
+	<setting type="radio" pref="extensions.lull-the-tabs.selectOnUnload" title="&lullthetabs.options.selectonunload.label;:">
 		<radiogroup orient="horizontal" preference="">
-			<radio value="0" label="nearest loaded tab"/>
-			<radio value="1" label="previously selected tab"/>
+			<radio value="0" label="&lullthetabs.options.selectonunload.nearest;"/>
+			<radio value="1" label="&lullthetabs.options.selectonunload.previous;"/>
 		</radiogroup>
 	</setting>
-	<setting type="bool" pref="extensions.lull-the-tabs.pauseBackgroundTabs" title="Don't load tabs that open in the background:" />
-	<setting type="bool" pref="extensions.lull-the-tabs.openNextToCurrent" title="Open background tabs next to the current one:">Applies when the option above is activated</setting>
-	<setting type="bool" pref="extensions.lull-the-tabs.autoUnload" title="Automatically unload inactive tabs:" />
-	<setting type="integer" pref="extensions.lull-the-tabs.unloadTimeout" title="Unload timeout, in minutes:" />
-	<setting type="string" pref="extensions.lull-the-tabs.exceptionList" title="Domain exception list:">Use ; as a delimiter for multiple domains</setting>
-	<setting type="bool" pref="extensions.lull-the-tabs.preventAutoUnloadAudioTab" title="Don't automatically unload tabs playing audio:" />
-	<setting type="radio" pref="extensions.lull-the-tabs.selectOnClose" title="When closing a tab, select:">
+	<setting type="bool" pref="extensions.lull-the-tabs.pauseBackgroundTabs" title="&lullthetabs.options.pausebackground.label;:" />
+	<setting type="bool" pref="extensions.lull-the-tabs.openNextToCurrent" title="&lullthetabs.options.opennexttocurrent.label;:">
+		&lullthetabs.options.opennexttocurrent.description;
+	</setting>
+	<setting type="bool" pref="extensions.lull-the-tabs.autoUnload" title="&lullthetabs.options.autounload.label;:" />
+	<setting type="integer" pref="extensions.lull-the-tabs.unloadTimeout" title="&lullthetabs.options.unloadtimeout.label;:" />
+	<setting type="string" pref="extensions.lull-the-tabs.exceptionList" title="&lullthetabs.options.exceptionlist.label;:">
+		&lullthetabs.options.exceptionlist.description;
+	</setting>
+	<setting type="bool" pref="extensions.lull-the-tabs.preventAutoUnloadAudioTab" title="&lullthetabs.options.preventunloadaudio.label;:" />
+	<setting type="radio" pref="extensions.lull-the-tabs.selectOnClose" title="&lullthetabs.options.selectonclose.label;:">
 		<radiogroup orient="horizontal" preference="">
-			<radio value="1" label="nearest loaded tab"/>
-			<radio value="2" label="previously selected tab"/>
-			<radio value="0" label="browser default"/>
+			<radio value="1" label="&lullthetabs.options.selectonclose.nearest;"/>
+			<radio value="2" label="&lullthetabs.options.selectonclose.previous;"/>
+			<radio value="0" label="&lullthetabs.options.selectonclose.default;"/>
 		</radiogroup>
 	</setting>
-	<setting type="bool" pref="extensions.lull-the-tabs.leftIsNearest" title="Consider the left adjacent tab as the nearest:" />
+	<setting type="bool" pref="extensions.lull-the-tabs.leftIsNearest" title="&lullthetabs.options.leftisnearest.label;:" />
 </vbox>
