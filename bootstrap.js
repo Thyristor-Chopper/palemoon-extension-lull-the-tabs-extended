@@ -34,24 +34,9 @@ XPCOMUtils.defineLazyModuleGetter(this, "PrivateBrowsingUtils", "resource://gre/
 const styleSheetService = Cc["@mozilla.org/content/style-sheet-service;1"].getService(Ci.nsIStyleSheetService);
 const styleSheetURI = Services.io.newURI("chrome://lull-the-tabs/skin/style.css", null, null);
 
-let domRegex = null, gWindowListener = null;
+const stringBundle = Services.strings.createBundle('chrome://lull-the-tabs/locale/lull-the-tabs.properties');
 
-const languages = {
-	'en-US': {
-		unloadTab: 'Unload Tab',
-		unloadOtherTabs: 'Unload Other Tabs',
-		neverUnload: 'Never Unload Tab',
-		neverUnload1: 'Never Unload "',
-		neverUnload2: '"',
-	},
-	ko: {
-		unloadTab: '\uD0ED\u0020\uBE44\uD65C\uC131\uD654',  // 탭 비활성화
-		unloadOtherTabs: '\uB2E4\uB978\u0020\uD0ED\u0020\uBE44\uD65C\uC131\uD654',  // 다른 탭 비활성화
-		neverUnload: '\uC774\u0020\uD0ED\u0020\uD56D\uC0C1\u0020\uD65C\uC131\uD654',  // 이 탭 항상 활성화
-		neverUnload1: '\'',
-		neverUnload2: '\' \uD56D\uC0C1\u0020\uD65C\uC131\uD654',  // '(도메인)' 항상 활성화
-	},
-};
+let domRegex = null, gWindowListener = null;
 
 function initPreferences() {
 	const defaultBranch = Services.prefs.getDefaultBranch(branch);
@@ -159,7 +144,7 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
 	}
 
 	let i = 0;
-	while((tabIndex - i >= 0) || (tabIndex + i < visibleTabs.length)) {
+	while(tabIndex - i >= 0 || tabIndex + i < visibleTabs.length) {
 		let offsetIncremented = 0;
 		if(tabIndex + i < visibleTabs.length && !visibleTabs[tabIndex + i].hasAttribute("pending") && visibleTabs[tabIndex + i] != aTab)
 			// The '!= aTab' test is to rule out the case where i == 0 and
@@ -217,6 +202,9 @@ function findClosestLoadedTab(aTab, aTabbrowser) {
  * related events.
  */
 function LullTheTabs(aWindow) {
+	// 실수로 new 없이 호출 방지
+	if(!(this instanceof LullTheTabs))
+		return new LullTheTabs(aWindow);
 	this.init(aWindow);
 }
 
@@ -348,7 +336,6 @@ LullTheTabs.prototype = {
 		const needlessToUnload = tab.hasAttribute("pending") || tab.hasAttribute("pinned") && !Services.prefs.getBoolPref(PINNED_ON_DEMAND_PREF);
 
 		let host = getHostOrCustomProtoURL(tab.linkedBrowser.currentURI);
-
 		if(!host) {
 			menuitem_neverUnload.setAttribute("hidden", "true");
 			if(needlessToUnload)
@@ -360,10 +347,7 @@ LullTheTabs.prototype = {
 
 		if(isWhiteListed(tab.linkedBrowser.currentURI)) {
 			// If we whitelisting by a wildcard, display it instead of the current host.
-			let whitelist = [];
-			let wlpref = Services.prefs.getComplexValue(branch + "exceptionList", Ci.nsISupportsString).data;
-			if(wlpref)
-				whitelist = wlpref.split(";");
+			const whitelist = Services.prefs.getComplexValue(branch + "exceptionList", Ci.nsISupportsString).data?.split(";") ?? [];
 			for(let i=0; i<whitelist.length; i++) {
 				const reg = new RegExp("^" + whitelist[i].replace(/\./g,"\\.").replace(/\*/g,".*") + "$");
 				if(reg.test(host)) {
@@ -380,9 +364,8 @@ LullTheTabs.prototype = {
 			else
 				menuitem_unloadTab.removeAttribute("disabled");
 		}
-		
-		const language = languages[Services.prefs.getCharPref('general.useragent.locale')] || languages['en-US'];
-		menuitem_neverUnload.setAttribute("label", language.neverUnload1 + host + language.neverUnload2);
+
+		menuitem_neverUnload.setAttribute("label", stringBundle.GetStringFromName('neverUnloadHost').replace('%S', host));
 		menuitem_neverUnload.removeAttribute("hidden");
 	},
 
@@ -664,12 +647,10 @@ LullTheTabs.prototype = {
 		const tabContextMenu = document.getElementById("tabContextMenu");
 		const openTabInWindow = document.getElementById("context_openTabInWindow");
 
-		const language = languages[Services.prefs.getCharPref('general.useragent.locale')] || languages['en-US'];
-
 		// add "Unload Tab" menuitem to tab context menu
 		const menuitem_unloadTab = document.createElement("menuitem");
 		menuitem_unloadTab.setAttribute("id", "lull-the-tabs-unload");
-		menuitem_unloadTab.setAttribute("label", language.unloadTab);
+		menuitem_unloadTab.setAttribute("label", stringBundle.GetStringFromName('unloadTab'));
 		menuitem_unloadTab.setAttribute("accesskey", "n");
 		menuitem_unloadTab.setAttribute("tbattr", "tabbrowser-multiple");
 		menuitem_unloadTab.setAttribute("oncommand", "gBrowser.LullTheTabs.unloadTab(gBrowser.mContextTab);");
@@ -678,7 +659,7 @@ LullTheTabs.prototype = {
 		// add "Unload Other Tabs" menuitem to tab context menu
 		const menuitem_unloadOtherTabs = document.createElement("menuitem");
 		menuitem_unloadOtherTabs.setAttribute("id", "lull-the-tabs-unload-others");
-		menuitem_unloadOtherTabs.setAttribute("label", language.unloadOtherTabs);
+		menuitem_unloadOtherTabs.setAttribute("label", stringBundle.GetStringFromName('unloadOtherTabs'));
 		menuitem_unloadOtherTabs.setAttribute("accesskey", "l");
 		menuitem_unloadOtherTabs.setAttribute("tbattr", "tabbrowser-multiple");
 		menuitem_unloadOtherTabs.setAttribute("oncommand", "gBrowser.LullTheTabs.unloadOtherTabs(gBrowser.mContextTab);");
@@ -687,7 +668,7 @@ LullTheTabs.prototype = {
 		// add "Never Unload" menuitem to tab context menu
 		const menuitem_neverUnload = document.createElement("menuitem");
 		menuitem_neverUnload.setAttribute("id", "lull-the-tabs-never-unload");
-		menuitem_neverUnload.setAttribute("label", language.neverUnload);
+		menuitem_neverUnload.setAttribute("label", stringBundle.GetStringFromName('neverUnload'));
 		menuitem_neverUnload.setAttribute("accesskey", "e");
 		menuitem_neverUnload.setAttribute("type", "checkbox");
 		menuitem_neverUnload.setAttribute("autocheck", "false");
